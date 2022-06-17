@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-interface ILuquidityFactory{
+interface ILiquidityFactory{
     
     event PoolCreated(address tokenA, address tokenB);
 

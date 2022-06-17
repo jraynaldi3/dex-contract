@@ -5,7 +5,7 @@ pragma solidity ^0.8.4;
 import "./LiquidityPool.sol";
 import "./interface/ILiquidityFactory.sol";
 
-contract LiquidityFactory is ILuquidityFactory{
+contract LiquidityFactory is ILiquidityFactory{
 
     Params public params;
 
