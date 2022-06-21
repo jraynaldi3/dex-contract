@@ -4,11 +4,13 @@ pragma solidity ^0.8.4;
 
 import "./interface/ILiquidityFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
-contract LiquidityPoll {
+contract LiquidityPoll is ReentrancyGuard{
 
     event LiquidityAdded(uint amount1, uint amount2, address by);
+    event LiquidityRemoved(uint amount1, uint amount2, address by);
     struct Liquidity {
         address token1;
         address token2;
@@ -57,16 +59,29 @@ contract LiquidityPoll {
         uint price = getCurrentPrice();
         require (amount1 / amount2 > price - (price*space/10000) && amount1 / amount2 < price + (price*space/10000),"Wrong Price");
         (bool success, ) = 
-            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount1));
+            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transferFrom.selector,address(msg.sender), address(this), amount1));
         require(success,"Transfer Unsuccessfull");
         ( success, ) = 
-            liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount2));
+            liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transferFrom.selector,address(msg.sender), address(this), amount2));
         require(success,"Transfer Unsuccessfull");
-        positionOfAccount[msg.sender]= Position({
-            amountToken1 : amount1,
-            amountToken2 : amount2
-        });
+        positionOfAccount[msg.sender].amountToken1 += amount1;
+        positionOfAccount[msg.sender].amountToken2 += amount2;
         
         emit LiquidityAdded(amount1, amount2, msg.sender);
+    }
+
+    function removeLiquidity(uint amount) public payable {
+        uint price = getCurrentPrice();
+        require( amount <= positionOfAccount[msg.sender].amountToken1);
+        (bool success, ) = 
+            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount));
+        require(success);
+        uint amount2 = amount * price;
+        (success, ) = 
+            liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount2));
+        require(success);
+        positionOfAccount[msg.sender].amountToken1 -= amount;
+        positionOfAccount[msg.sender].amountToken2 -= amount2;
+        emit LiquidityRemoved(amount, amount2, msg.sender);
     }
 }
