@@ -7,12 +7,22 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract LiquidityPoll {
+
+    event LiquidityAdded(uint amount1, uint amount2, address by);
     struct Liquidity {
         address token1;
         address token2;
     }
 
+    struct Position {
+        uint amountToken1;
+        uint amountToken2;
+    }
+
     uint fee = 25;
+    uint space = 1000;
+
+    mapping (address => Position) positionOfAccount;
 
     Liquidity liquidityPool;
     constructor() {
@@ -43,4 +53,20 @@ contract LiquidityPoll {
         price = getPrice(token1, token2);
     }
 
+    function addLiquidity(uint amount1, uint amount2) public payable{
+        uint price = getCurrentPrice();
+        require (amount1 / amount2 > price - (price*space/10000) && amount1 / amount2 < price + (price*space/10000),"Wrong Price");
+        (bool success, ) = 
+            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount1));
+        require(success,"Transfer Unsuccessfull");
+        ( success, ) = 
+            liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount2));
+        require(success,"Transfer Unsuccessfull");
+        positionOfAccount[msg.sender]= Position({
+            amountToken1 : amount1,
+            amountToken2 : amount2
+        });
+        
+        emit LiquidityAdded(amount1, amount2, msg.sender);
+    }
 }
