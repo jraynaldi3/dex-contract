@@ -7,7 +7,7 @@ import "./interface/ILiquidityFactory.sol";
 
 contract LiquidityFactory is ILiquidityFactory{
 
-    Params public params;
+    Params public override params;
 
     mapping(address => mapping (address=>address)) public override poolAddress;
 
