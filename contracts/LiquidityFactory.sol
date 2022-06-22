@@ -17,7 +17,7 @@ contract LiquidityFactory is ILiquidityFactory{
             tokenB: _tokenB
         });
 
-        pool = address(new LiquidityPoll{salt : keccak256(abi.encodePacked(_tokenA, _tokenB))}());
+        pool = address(new LiquidityPool{salt : keccak256(abi.encodePacked(_tokenA, _tokenB))}());
         delete params;
     }
 
