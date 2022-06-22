@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
-contract LiquidityPoll is ReentrancyGuard{
+contract LiquidityPool is ReentrancyGuard{
 
     event LiquidityAdded(uint amount1, uint amount2, address by);
     event LiquidityRemoved(uint amount1, uint amount2, address by);
