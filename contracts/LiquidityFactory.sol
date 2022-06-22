@@ -7,7 +7,7 @@ import "./interface/ILiquidityFactory.sol";
 
 contract LiquidityFactory is ILiquidityFactory{
 
-    Params public params;
+    Params public override params;
 
     mapping(address => mapping (address=>address)) public override poolAddress;
 
@@ -17,7 +17,7 @@ contract LiquidityFactory is ILiquidityFactory{
             tokenB: _tokenB
         });
 
-        pool = address(new LiquidityPoll{salt : keccak256(abi.encodePacked(_tokenA, _tokenB))}());
+        pool = address(new LiquidityPool{salt : keccak256(abi.encodePacked(_tokenA, _tokenB))}());
         delete params;
     }
 
