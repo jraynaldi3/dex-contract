@@ -31,14 +31,14 @@ contract LiquidityPool is ReentrancyGuard{
         (liquidityPool.token1, liquidityPool.token2) = ILiquidityFactory(msg.sender).params();
     }
 
-    function balance1() internal view returns(uint){
+    function balance1() public view returns(uint){
         (bool success, bytes memory data) = 
             liquidityPool.token1.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         require(success && data.length >= 32);
         return abi.decode(data , (uint));
     }
 
-    function balance2() internal view returns(uint){
+    function balance2() public view returns(uint){
         (bool success, bytes memory data) = 
             liquidityPool.token2.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         require(success && data.length >= 32);
@@ -52,18 +52,22 @@ contract LiquidityPool is ReentrancyGuard{
     function getCurrentPrice() public view returns(uint price){
         uint token1 = balance1();
         uint token2 = balance2();
-        price = getPrice(token1, token2);
+        price = getPrice(token1, token2)*100;
     }
 
-    function addLiquidity(uint amount1, uint amount2) public payable{
+    function addLiquidity(uint256 amount1, uint256 amount2) public payable{
         uint price = getCurrentPrice();
-        require (amount1 / amount2 > price - (price*space/10000) && amount1 / amount2 < price + (price*space/10000),"Wrong Price");
+        require (amount1 / amount2 *100> price - (price*space/10000) && amount1 / amount2 *100 < price + (price*space/10000),"Wrong Price");
+        //(bool approved,) = liquidityPool.token1.call(abi.encodeWithSignature("approve(address,uint256)", address(msg.sender), amount1));
+        //require(approved);
         (bool success, ) = 
-            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transferFrom.selector,address(msg.sender), address(this), amount1));
+            liquidityPool.token1.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount1));
         require(success,"Transfer Unsuccessfull");
-        ( success, ) = 
-            liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transferFrom.selector,address(msg.sender), address(this), amount2));
-        require(success,"Transfer Unsuccessfull");
+        //(bool approved2,) = liquidityPool.token2.call(abi.encodeWithSignature("approve(address,uint256)", address(this), amount2));
+        //require(approved2);
+        (bool success2, ) = 
+            liquidityPool.token2.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount2));
+        require(success2,"Transfer Unsuccessfull");
         positionOfAccount[msg.sender].amountToken1 += amount1;
         positionOfAccount[msg.sender].amountToken2 += amount2;
         
