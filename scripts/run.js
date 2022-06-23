@@ -25,10 +25,17 @@ const main = async () =>{
     tx = await testcoin2.transfer(pool, parseEther("0.5"));
     tx = await testcoin1.transfer(pool, parseEther("1"));
     console.log(await poolContract.getCurrentPrice())
-    tx = await testcoin1.approve(pool,parseEther("1"));
-    tx = await testcoin2.approve(pool,parseEther("1"));
+    tx = await testcoin1.approve(pool,parseEther("1000"));
+    tx = await testcoin2.approve(pool,parseEther("1000"));
     tx = await poolContract.addLiquidity(parseEther("0.5"),parseEther("0.25"));
-    console.log(await poolContract.getCurrentPrice());
+
+    tx = await poolContract.removeLiquidity(parseEther("0.25"));
+    console.log((await poolContract.getCurrentPrice()));
+    console.log((await poolContract.getPriceAfterSwap(parseEther("0.01"), true))/(2**64));
+
+    console.log((await poolContract.getPriceAfterSwap(parseEther("0.01"), false))/(2**64));
+    tx = await poolContract.swap(parseEther("0.01"),false);
+    console.log(await poolContract.getCurrentPrice()/(2**64))
 }
 
 const runMain = async()=>{
