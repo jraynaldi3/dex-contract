@@ -23,6 +23,7 @@ contract LiquidityPool is ReentrancyGuard{
 
     uint fee = 25;
     uint space = 1000;
+    uint deliminator = 2**64;
 
     mapping (address => Position) positionOfAccount;
 
@@ -31,40 +32,36 @@ contract LiquidityPool is ReentrancyGuard{
         (liquidityPool.token1, liquidityPool.token2) = ILiquidityFactory(msg.sender).params();
     }
 
-    function balance1() public view returns(uint){
+    function balance1() internal view returns(uint){
         (bool success, bytes memory data) = 
             liquidityPool.token1.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         require(success && data.length >= 32);
         return abi.decode(data , (uint));
     }
 
-    function balance2() public view returns(uint){
+    function balance2() internal view returns(uint){
         (bool success, bytes memory data) = 
             liquidityPool.token2.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         require(success && data.length >= 32);
         return abi.decode(data , (uint));
     }
 
-    function getPrice(uint amount1, uint amount2) internal pure returns(uint){
-        return amount1/amount2;
+    function getPrice(uint amount1, uint amount2) internal view returns(uint){
+        return amount1*deliminator/amount2;
     }
 
-    function getCurrentPrice() public view returns(uint price){
+    function getCurrentPrice() internal view returns(uint price){
         uint token1 = balance1();
         uint token2 = balance2();
-        price = getPrice(token1, token2)*100;
+        price = getPrice(token1, token2);
     }
 
     function addLiquidity(uint256 amount1, uint256 amount2) public payable{
         uint price = getCurrentPrice();
-        require (amount1 / amount2 *100> price - (price*space/10000) && amount1 / amount2 *100 < price + (price*space/10000),"Wrong Price");
-        //(bool approved,) = liquidityPool.token1.call(abi.encodeWithSignature("approve(address,uint256)", address(msg.sender), amount1));
-        //require(approved);
+        require ( amount1 * deliminator / amount2 > price - (price*space/10000) && amount1 * deliminator / amount2  < price + (price*space/10000),"Wrong Price");
         (bool success, ) = 
             liquidityPool.token1.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount1));
         require(success,"Transfer Unsuccessfull");
-        //(bool approved2,) = liquidityPool.token2.call(abi.encodeWithSignature("approve(address,uint256)", address(this), amount2));
-        //require(approved2);
         (bool success2, ) = 
             liquidityPool.token2.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount2));
         require(success2,"Transfer Unsuccessfull");
@@ -88,4 +85,6 @@ contract LiquidityPool is ReentrancyGuard{
         positionOfAccount[msg.sender].amountToken2 -= amount2;
         emit LiquidityRemoved(amount, amount2, msg.sender);
     }
+
+    
 }

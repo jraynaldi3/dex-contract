@@ -22,13 +22,13 @@ const main = async () =>{
     await tx.wait();
     const pool = await factoryContract.poolAddress(testcoin1.address,testcoin2.address);
     const poolContract = await hre.ethers.getContractAt("LiquidityPool", pool);
-    tx = await testcoin2.transfer(pool, parseEther("1"));
+    tx = await testcoin2.transfer(pool, parseEther("0.5"));
     tx = await testcoin1.transfer(pool, parseEther("1"));
     console.log(await poolContract.getCurrentPrice())
     tx = await testcoin1.approve(pool,parseEther("1"));
     tx = await testcoin2.approve(pool,parseEther("1"));
-    tx = await poolContract.addLiquidity(parseEther("1"),parseEther("1"));
-    console.log(await poolContract.balance1());
+    tx = await poolContract.addLiquidity(parseEther("0.5"),parseEther("0.25"));
+    console.log(await poolContract.getCurrentPrice());
 }
 
 const runMain = async()=>{
