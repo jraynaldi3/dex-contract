@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 
 interface ILiquidityPool {
 
+    function liquidityOfAccount(address account) external view returns(uint);
+
     function getCurrentPrice() external view returns(uint price);
     
     function getPriceAfterSwap(uint amount, bool oneToTwo) external view returns(uint price);
