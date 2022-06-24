@@ -6,6 +6,7 @@ import "./interface/ILiquidityFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interface/ILiquidityPool.sol";
+import "./libraries/LiquidityCalc.sol";
 
 
 contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
@@ -31,7 +32,7 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
         (liquidityPool.token1, liquidityPool.token2) = ILiquidityFactory(msg.sender).params();
     }
 
-    
+
 
     function balance1() internal view returns(uint){
         (bool success, bytes memory data) = 
@@ -77,21 +78,30 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
         (bool success2, ) = 
             liquidityPool.token2.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount2));
         require(success2,"Transfer Unsuccessfull");
-        
+        if(totalLiquidity > 0 ) {
+            uint liquidity = LiquidityCalc.amountToLiquidity(amount1, balance1(), totalLiquidity);
+            liquidityOfAccount[msg.sender] += liquidity; 
+            totalLiquidity += liquidity;
+        } else {
+            liquidityOfAccount[msg.sender] += 1;
+            totalLiquidity += 1;
+        }
         emit LiquidityAdded(amount1, amount2, msg.sender);
     }
 
-    function removeLiquidity(uint amount) external override payable {
-        uint price = getCurrentPrice();
-        require( amount <= liquidityOfAccount[msg.sender]);
-        uint amount2 =  amount* deliminator/price;
+    function removeLiquidity(uint liquidity) external override payable {
+        require( liquidity <= liquidityOfAccount[msg.sender]);
+        liquidityOfAccount[msg.sender] -= liquidity;
+        uint amount1 = LiquidityCalc.liquidityToAmount(liquidity, balance1(), totalLiquidity);
+        uint amount2 = LiquidityCalc.liquidityToAmount(liquidity, balance2(), totalLiquidity);
+        totalLiquidity -= liquidity;
         (bool success, ) = 
-            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount));
+            liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount1));
         require(success,"failed transfer token1");
         (success, ) = 
             liquidityPool.token2.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount2));
         require(success,"failed transfer token2");
-        emit LiquidityRemoved(amount, amount2, msg.sender);
+        emit LiquidityRemoved(amount1, amount2, msg.sender);
     }
 
     function swap(uint256 amount, bool oneToTwo) external override payable{
