@@ -5,33 +5,33 @@ pragma solidity ^0.8.4;
 import "./interface/ILiquidityFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interface/ILiquidityPool.sol";
 
 
-contract LiquidityPool is ReentrancyGuard{
+contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
 
     event LiquidityAdded(uint amount1, uint amount2, address by);
     event LiquidityRemoved(uint amount1, uint amount2, address by);
     event Swap(uint amount1, uint amount2, address by, uint atPrice);
+    
     struct Liquidity {
         address token1;
         address token2;
     }
 
-    struct Position {
-        uint amountToken1;
-        uint amountToken2;
-    }
-
     uint fee = 25;
     uint space = 1000;
     uint deliminator = 2**64;
+    uint totalLiquidity;
 
-    mapping (address => Position) positionOfAccount;
+    mapping (address => uint) liquidityOfAccount;
 
     Liquidity liquidityPool;
     constructor() {
         (liquidityPool.token1, liquidityPool.token2) = ILiquidityFactory(msg.sender).params();
     }
+
+    
 
     function balance1() internal view returns(uint){
         (bool success, bytes memory data) = 
@@ -51,13 +51,24 @@ contract LiquidityPool is ReentrancyGuard{
         return amount1*deliminator/amount2;
     }
 
-    function getCurrentPrice() public view returns(uint price){
+    function getCurrentPrice() public view override returns(uint price){
         uint token1 = balance1();
         uint token2 = balance2();
         price = getPrice(token1, token2);
     }
 
-    function addLiquidity(uint256 amount1, uint256 amount2) public payable{
+    function getPriceAfterSwap(uint amount, bool oneToTwo) public view override returns(uint price){
+        uint currentBalance1 = balance1();
+        uint currentBalance2 = balance2();
+        uint currentPrice = getCurrentPrice();
+        if(oneToTwo){
+            price = getPrice(currentBalance1 + amount, (currentBalance2*deliminator - (amount*(deliminator**2)/currentPrice))/deliminator);
+        } else {
+            price = getPrice((currentBalance1*deliminator - (amount*currentPrice))/deliminator,currentBalance2 + amount);
+        }
+    }
+
+    function addLiquidity(uint256 amount1, uint256 amount2) external override payable{
         uint price = getCurrentPrice();
         require ( amount1 * deliminator / amount2 > price - (price*space/10000) && amount1 * deliminator / amount2  < price + (price*space/10000),"Wrong Price");
         (bool success, ) = 
@@ -66,18 +77,14 @@ contract LiquidityPool is ReentrancyGuard{
         (bool success2, ) = 
             liquidityPool.token2.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount2));
         require(success2,"Transfer Unsuccessfull");
-        positionOfAccount[msg.sender].amountToken1 += amount1;
-        positionOfAccount[msg.sender].amountToken2 += amount2;
         
         emit LiquidityAdded(amount1, amount2, msg.sender);
     }
 
-    function removeLiquidity(uint amount) public payable {
+    function removeLiquidity(uint amount) external override payable {
         uint price = getCurrentPrice();
-        require( amount <= positionOfAccount[msg.sender].amountToken1);
+        require( amount <= liquidityOfAccount[msg.sender]);
         uint amount2 =  amount* deliminator/price;
-        positionOfAccount[msg.sender].amountToken1 -= amount;
-        positionOfAccount[msg.sender].amountToken2 -= amount2;
         (bool success, ) = 
             liquidityPool.token1.call(abi.encodeWithSelector(IERC20.transfer.selector, address(msg.sender), amount));
         require(success,"failed transfer token1");
@@ -87,7 +94,7 @@ contract LiquidityPool is ReentrancyGuard{
         emit LiquidityRemoved(amount, amount2, msg.sender);
     }
 
-    function swap(uint256 amount, bool oneToTwo) external payable{
+    function swap(uint256 amount, bool oneToTwo) external override payable{
         if(oneToTwo){
             (bool success, bytes memory data) = 
                 liquidityPool.token1.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(msg.sender)));
@@ -123,14 +130,5 @@ contract LiquidityPool is ReentrancyGuard{
         }
     }
 
-    function getPriceAfterSwap(uint amount, bool oneToTwo) public view returns(uint price){
-        uint currentBalance1 = balance1();
-        uint currentBalance2 = balance2();
-        uint currentPrice = getCurrentPrice();
-        if(oneToTwo){
-            price = getPrice(currentBalance1 + amount, (currentBalance2*deliminator - (amount*(deliminator**2)/currentPrice))/deliminator);
-        } else {
-            price = getPrice((currentBalance1*deliminator - (amount*currentPrice))/deliminator,currentBalance2 + amount);
-        }
-    }
+    
 }
