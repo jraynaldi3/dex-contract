@@ -25,7 +25,7 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
     uint deliminator = 2**64;
     uint totalLiquidity;
 
-    mapping (address => uint) liquidityOfAccount;
+    mapping (address => uint) public override liquidityOfAccount;
 
     Liquidity liquidityPool;
     constructor() {
@@ -53,12 +53,16 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
     }
 
     function getCurrentPrice() public view override returns(uint price){
+        if (totalLiquidity <= 0) {
+            return price = 0;
+        }
         uint token1 = balance1();
         uint token2 = balance2();
         price = getPrice(token1, token2);
     }
 
     function getPriceAfterSwap(uint amount, bool oneToTwo) public view override returns(uint price){
+        require(totalLiquidity > 0 &&balance1() >0 && balance2() > 0 , "Not Enought Liquidity");
         uint currentBalance1 = balance1();
         uint currentBalance2 = balance2();
         uint currentPrice = getCurrentPrice();
@@ -71,7 +75,9 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
 
     function addLiquidity(uint256 amount1, uint256 amount2) external override payable{
         uint price = getCurrentPrice();
-        require ( amount1 * deliminator / amount2 > price - (price*space/10000) && amount1 * deliminator / amount2  < price + (price*space/10000),"Wrong Price");
+        if(totalLiquidity > 0){
+            require ( getPrice(amount1, amount2)> price - (price*space/10000) && getPrice(amount1, amount2) < price + (price*space/10000),"Wrong Price");
+        }
         (bool success, ) = 
             liquidityPool.token1.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", address(msg.sender),address(this), amount1));
         require(success,"Transfer Unsuccessfull");
@@ -83,14 +89,14 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
             liquidityOfAccount[msg.sender] += liquidity; 
             totalLiquidity += liquidity;
         } else {
-            liquidityOfAccount[msg.sender] += 1;
-            totalLiquidity += 1;
+            liquidityOfAccount[msg.sender] += 1 * deliminator;
+            totalLiquidity += 1 * deliminator;
         }
         emit LiquidityAdded(amount1, amount2, msg.sender);
     }
 
     function removeLiquidity(uint liquidity) external override payable {
-        require( liquidity <= liquidityOfAccount[msg.sender]);
+        require( liquidity <= liquidityOfAccount[msg.sender],"Not Enought");
         liquidityOfAccount[msg.sender] -= liquidity;
         uint amount1 = LiquidityCalc.liquidityToAmount(liquidity, balance1(), totalLiquidity);
         uint amount2 = LiquidityCalc.liquidityToAmount(liquidity, balance2(), totalLiquidity);
@@ -105,6 +111,7 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
     }
 
     function swap(uint256 amount, bool oneToTwo) external override payable{
+        require(totalLiquidity>0);
         if(oneToTwo){
             (bool success, bytes memory data) = 
                 liquidityPool.token1.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(msg.sender)));
