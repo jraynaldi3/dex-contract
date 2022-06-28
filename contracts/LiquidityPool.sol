@@ -21,7 +21,7 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
     address token2;
     uint fee = 25;
     uint space = 1000;
-    uint deliminator = 2**64;
+    uint denominator = 2**64;
     uint totalLiquidity;
 
     mapping (address => uint) public override liquidityOfAccount;
@@ -47,7 +47,7 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
     }
 
     function getPrice(uint amount1, uint amount2) internal view returns(uint){
-        return amount1*deliminator/amount2;
+        return amount1*denominator/amount2;
     }
 
     function getCurrentPrice() public view override returns(uint price){
@@ -65,9 +65,9 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
         uint currentBalance2 = balance2();
         uint currentPrice = getCurrentPrice();
         if(oneToTwo){
-            price = getPrice(currentBalance1 + amount, (currentBalance2*deliminator - (amount*(deliminator**2)/currentPrice))/deliminator);
+            price = getPrice(currentBalance1 + amount, (currentBalance2*denominator - (amount*(denominator**2)/currentPrice))/denominator);
         } else {
-            price = getPrice((currentBalance1*deliminator - (amount*currentPrice))/deliminator,currentBalance2 + amount);
+            price = getPrice((currentBalance1*denominator - (amount*currentPrice))/denominator,currentBalance2 + amount);
         }
     }
 
@@ -83,8 +83,8 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
             liquidityOfAccount[msg.sender] += liquidity; 
             totalLiquidity += liquidity;
         } else {
-            liquidityOfAccount[msg.sender] += 1 * deliminator;
-            totalLiquidity += 1 * deliminator;
+            liquidityOfAccount[msg.sender] += 1 * denominator;
+            totalLiquidity += 1 * denominator;
         }
         emit LiquidityAdded(amount1, amount2, msg.sender);
     }
@@ -115,8 +115,8 @@ contract LiquidityPool is ReentrancyGuard,ILiquidityPool{
 
         uint priceAfterSwap = getPriceAfterSwap(amount, oneToTwo);
         uint toSend = oneToTwo?
-            (amount*deliminator/priceAfterSwap):
-            amount*priceAfterSwap/deliminator;
+            (amount*denominator/priceAfterSwap):
+            amount*priceAfterSwap/denominator;
 
         if(oneToTwo){
             (bool success,bytes memory data) = token2.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
